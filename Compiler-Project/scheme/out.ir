@@ -1,0 +1,23 @@
+x = 5
+y = 10
+t1 = x - 3
+t2 = y * t1
+t3 = t2 / 2
+t4 = x + t3
+z = t4
+print z
+t5 = z - 1
+a = t5
+print a
+t6 = a * 2
+b = t6
+print b
+t7 = a / 2
+c = t7
+print c
+t8 = z + 1
+d = t8
+print d
+t9 = x + 1
+x = t9
+print x

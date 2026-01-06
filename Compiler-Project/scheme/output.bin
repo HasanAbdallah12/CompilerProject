@@ -1,0 +1,18 @@
+x = 5
+y = 10
+t1 = x PLUS y
+z = t1
+t2 = z GT 10
+IF_FALSE t2 GOTO L1
+PRINT z
+GOTO L2
+L1:
+PRINT x
+L2:
+L3:
+t3 = x LT 10
+IF_FALSE t3 GOTO L4
+t4 = x PLUS 1
+x = t4
+GOTO L3
+L4:

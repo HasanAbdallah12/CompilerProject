@@ -1,0 +1,164 @@
+#lang racket
+
+
+;; --------------------------------------------
+;; Global parser state
+;; --------------------------------------------
+
+(define tokens '())
+(define pos 0)
+
+;; --------------------------------------------
+;; Helpers
+;; --------------------------------------------
+
+(define (current-token)
+  (list-ref tokens pos))
+
+(define (current-kind)
+  (car (current-token)))
+
+(define (current-value)
+  (cadr (current-token)))
+
+(define (advance!)
+  (set! pos (+ pos 1)))
+
+(define (eat expected-kind)
+  (if (eq? (current-kind) expected-kind)
+      (begin
+        (advance!)
+        #t)
+      (error
+       (string-append
+        "Syntax error: expected "
+        (symbol->string expected-kind)
+        ", got "
+        (symbol->string (current-kind))))))
+
+;; --------------------------------------------
+;; Grammar rules
+;; --------------------------------------------
+
+;; program → stmlist EOF
+(define (parse-program)
+  (parse-stmlist)
+  (eat 'EOF)
+  'OK)
+
+;; stmlist → stmt stmlist | ε
+(define (parse-stmlist)
+  (cond
+    [(member (current-kind) '(LET ID PRINT IF WHILE))
+     (parse-stmt)
+     (parse-stmlist)]
+    [else
+     'epsilon]))
+
+;; stmt rules
+(define (parse-stmt)
+  (cond
+    ;; let id = expr ;
+    [(eq? (current-kind) 'LET)
+     (eat 'LET)
+     (eat 'ID)
+     (eat 'ASSIGN)
+     (parse-expr)
+     (eat 'SEMI)]
+
+    ;; id = expr ;
+    [(eq? (current-kind) 'ID)
+     (eat 'ID)
+     (eat 'ASSIGN)
+     (parse-expr)
+     (eat 'SEMI)]
+
+    ;; print expr ;
+    [(eq? (current-kind) 'PRINT)
+     (eat 'PRINT)
+     (parse-expr)
+     (eat 'SEMI)]
+
+    ;; if expr { stmlist } else { stmlist }
+    [(eq? (current-kind) 'IF)
+     (eat 'IF)
+     (parse-condition)
+     (eat 'LBRACE)
+     (parse-stmlist)
+     (eat 'RBRACE)
+     (eat 'ELSE)
+     (eat 'LBRACE)
+     (parse-stmlist)
+     (eat 'RBRACE)]
+
+    ;; while expr { stmlist }
+    [(eq? (current-kind) 'WHILE)
+     (eat 'WHILE)
+     (parse-condition)
+     (eat 'LBRACE)
+     (parse-stmlist)
+     (eat 'RBRACE)]
+
+    [else
+     (error "Syntax error: invalid statement")]))
+
+;; condition → expr (GT|LT expr)?
+(define (parse-condition)
+  (parse-expr)
+  (cond
+    [(eq? (current-kind) 'GT)
+     (eat 'GT)
+     (parse-expr)]
+    [(eq? (current-kind) 'LT)
+     (eat 'LT)
+     (parse-expr)]
+    [else
+     'ok]))
+
+;; expr → term ((PLUS|MINUS) term)*
+(define (parse-expr)
+  (parse-term)
+  (cond
+    [(member (current-kind) '(PLUS MINUS))
+     (eat (current-kind))
+     (parse-term)
+     (parse-expr)]
+    [else
+     'ok]))
+
+;; term → factor ((MUL|DIV) factor)*
+(define (parse-term)
+  (parse-factor)
+  (cond
+    [(member (current-kind) '(MUL DIV))
+     (eat (current-kind))
+     (parse-factor)
+     (parse-term)]
+    [else
+     'ok]))
+
+;; factor → INT | ID | ( expr )
+(define (parse-factor)
+  (cond
+    [(eq? (current-kind) 'INT)
+     (eat 'INT)]
+
+    [(eq? (current-kind) 'ID)
+     (eat 'ID)]
+
+    [(eq? (current-kind) 'LPAREN)
+     (eat 'LPAREN)
+     (parse-expr)
+     (eat 'RPAREN)]
+
+    [else
+     (error "Syntax error: invalid factor")]))
+
+;; --------------------------------------------
+;; Entry point
+;; --------------------------------------------
+
+(define (parse token-list)
+  (set! tokens token-list)
+  (set! pos 0)
+  (parse-program))

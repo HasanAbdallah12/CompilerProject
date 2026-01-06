@@ -1,0 +1,128 @@
+#lang racket
+
+;; --------------------------------------------
+;; Token constructor
+;; --------------------------------------------
+
+(define (make-token kind value)
+  (list kind value))
+
+;; --------------------------------------------
+;; Keywords
+;; --------------------------------------------
+
+(define keywords
+  '((let LET)
+    (print PRINT)
+    (if IF)
+    (else ELSE)
+    (while WHILE)))
+
+;; --------------------------------------------
+;; Character helpers
+;; --------------------------------------------
+
+(define (letter? c)
+  (or (and (char>=? c #\a) (char<=? c #\z))
+      (and (char>=? c #\A) (char<=? c #\Z))))
+
+(define (digit? c)
+  (and (char>=? c #\0) (char<=? c #\9)))
+
+(define (whitespace? c)
+  (or (char=? c #\space)
+      (char=? c #\newline)
+      (char=? c #\tab)))
+
+;; --------------------------------------------
+;; Main lexer
+;; --------------------------------------------
+
+(define (tokenize source)
+  (define len (string-length source))
+
+  (define (scan pos tokens)
+    (if (>= pos len)
+        (reverse (cons '(EOF "$") tokens))
+        (let ((ch (string-ref source pos)))
+
+          (cond
+            ;; skip whitespace
+            [(whitespace? ch)
+             (scan (+ pos 1) tokens)]
+
+            ;; identifier / keyword
+            [(or (letter? ch) (char=? ch #\_))
+             (scan-word pos tokens)]
+
+            ;; number
+            [(digit? ch)
+             (scan-number pos tokens)]
+
+            ;; symbols
+            [else
+             (scan-symbol pos tokens)]))))
+
+  ;; --------------------------------------------
+  ;; identifier / keyword
+  ;; --------------------------------------------
+
+  (define (scan-word pos tokens)
+    (define (loop i acc)
+      (if (and (< i len)
+               (or (letter? (string-ref source i))
+                   (digit? (string-ref source i))
+                   (char=? (string-ref source i) #\_)))
+          (loop (+ i 1)
+                (string-append acc
+                               (string (string-ref source i))))
+          (let* ((sym (string->symbol acc))
+                 (kw (assoc sym keywords)))
+            (if kw
+                (scan i (cons (make-token (cadr kw) sym) tokens))
+                (scan i (cons (make-token 'ID sym) tokens))))))
+    (loop pos ""))
+
+  ;; --------------------------------------------
+  ;; number
+  ;; --------------------------------------------
+
+  (define (scan-number pos tokens)
+    (define (loop i acc)
+      (if (and (< i len) (digit? (string-ref source i)))
+          (loop (+ i 1)
+                (string-append acc
+                               (string (string-ref source i))))
+          (scan i
+                (cons (make-token 'INT (string->number acc))
+                      tokens))))
+    (loop pos ""))
+
+  ;; --------------------------------------------
+  ;; symbols
+  ;; --------------------------------------------
+
+  (define (scan-symbol pos tokens)
+    (let ((c (string-ref source pos)))
+      (cond
+        [(char=? c #\+) (scan (+ pos 1) (cons '(PLUS "+") tokens))]
+        [(char=? c #\-) (scan (+ pos 1) (cons '(MINUS "-") tokens))]
+        [(char=? c #\*) (scan (+ pos 1) (cons '(MUL "*") tokens))]
+        [(char=? c #\/) (scan (+ pos 1) (cons '(DIV "/") tokens))]
+        [(char=? c #\=) (scan (+ pos 1) (cons '(ASSIGN "=") tokens))]
+        [(char=? c #\>) (scan (+ pos 1) (cons '(GT ">") tokens))]
+        [(char=? c #\<) (scan (+ pos 1) (cons '(LT "<") tokens))]
+        [(char=? c #\() (scan (+ pos 1) (cons '(LPAREN "(") tokens))]
+        [(char=? c #\)) (scan (+ pos 1) (cons '(RPAREN ")") tokens))]
+        [(char=? c #\{) (scan (+ pos 1) (cons '(LBRACE "{") tokens))]
+        [(char=? c #\}) (scan (+ pos 1) (cons '(RBRACE "}") tokens))]
+        [(char=? c #\;) (scan (+ pos 1) (cons '(SEMI ";") tokens))]
+        [else (error "Lexical error: illegal character")])))
+
+  (scan 0 '()))
+
+(tokenize
+ "let x = 5;
+  if x > 3 {
+    print x;
+  }")

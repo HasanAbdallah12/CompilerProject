@@ -1,0 +1,90 @@
+#lang racket
+
+(require "../Lexer/lexer.rkt")
+(require "../Parser/parser.rkt")
+(require "../semantic/semantic.rkt")
+
+;; =====================================
+;; Run single test
+;; =====================================
+
+(define (run-test name source)
+  (displayln "====================================")
+  (displayln (string-append "TEST: " name))
+  (displayln "------------------------------------")
+  (displayln "SOURCE CODE:")
+  (displayln source)
+  (displayln "")
+
+  (with-handlers
+      ([exn:fail?
+        (lambda (e)
+          (displayln "ERROR:")
+          (displayln (exn-message e))
+          (displayln ""))])
+
+    ;; Lexer
+    (define tokens (tokenize source))
+    (displayln "TOKENS:")
+    (displayln tokens)
+    (displayln "")
+
+    ;; Parser + Semantic
+    (define ctx (parse tokens))
+
+    (displayln "IR (INTERMEDIATE CODE):")
+    (for-each displayln (ctx-code ctx))
+    (displayln "")))
+
+;; =====================================
+;; TEST CASES
+;; =====================================
+
+(define test-simple
+  "let x = 5;")
+
+(define test-arithmetic
+  "let x = 5 + 2 * 3;")
+
+(define test-undeclared
+  "x = 5;")
+
+(define test-if
+  "let x = 5;
+   if x > 3 {
+     x = x + 1;
+   } else {
+     x = x - 1;
+   }")
+
+(define test-while
+  "let x = 0;
+   while x < 3 {
+     x = x + 1;
+   }")
+
+(define test-full
+  "let x = 5;
+   let y = 10;
+   let z = x + y;
+
+   if z > 10 {
+     print z;
+   } else {
+     print x;
+   }
+
+   while x < 10 {
+     x = x + 1;
+   }")
+
+;; =====================================
+;; RUN ALL TESTS
+;; =====================================
+
+(run-test "Simple assignment" test-simple)
+(run-test "Arithmetic expression" test-arithmetic)
+(run-test "Undeclared variable (semantic error)" test-undeclared)
+(run-test "If statement" test-if)
+(run-test "While loop" test-while)
+(run-test "Full program" test-full)

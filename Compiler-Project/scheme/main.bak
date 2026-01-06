@@ -1,0 +1,83 @@
+#lang racket
+
+(require "Lexer/lexer.rkt")
+(require "Parser/parser.rkt")
+(require "semantic/semantic.rkt")
+
+;; =====================================
+;; Run main (similar to tests)
+;; =====================================
+
+(define (run-main name source)
+  (displayln "====================================")
+  (displayln (string-append "MAIN: " name))
+  (displayln "------------------------------------")
+  (displayln "SOURCE CODE:")
+  (displayln source)
+  (displayln "")
+
+  (with-handlers
+      ([exn:fail?
+        (lambda (e)
+          (displayln "ERROR:")
+          (displayln (exn-message e))
+          (displayln ""))])
+
+    ;; Lexer
+    (define tokens (tokenize source))
+    (displayln "TOKENS:")
+    (displayln tokens)
+    (displayln "")
+
+    ;; Parser + Semantic
+    (define ctx (parse tokens))
+
+    (displayln "IR (INTERMEDIATE CODE):")
+    (define ir (ctx-code ctx))
+    (for-each displayln ir)
+    (displayln "")
+
+    ;; =====================================
+    ;; Backend: write binary file
+    ;; =====================================
+    (define output-file "output.bin")
+
+    (call-with-output-file output-file
+      (lambda (out)
+        (for-each
+         (lambda (line)
+           (write-bytes
+            (string->bytes/utf-8
+             (string-append line "\n"))
+            out))
+         ir))
+      #:exists 'replace)
+
+    (displayln
+     (string-append "Binary output written to: " output-file))
+    (displayln "")))
+
+;; =====================================
+;; PROGRAM TO COMPILE
+;; =====================================
+
+(define full-program
+  "let x = 5;
+   let y = 10;
+   let z = x + y;
+
+   if z > 10 {
+     print z;
+   } else {
+     print x;
+   }
+
+   while x < 10 {
+     x = x + 1;
+   }")
+
+;; =====================================
+;; RUN
+;; =====================================
+
+(run-main "Full program" full-program)

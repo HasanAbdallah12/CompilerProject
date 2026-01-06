@@ -1,0 +1,20 @@
+#lang racket
+(provide run-backend)
+
+;; backend: IR -> binary file
+;; (simple stack-machine encoding)
+
+(define (encode-line line)
+  (cond
+    [(regexp-match #rx"=" line)
+     (string-append "MOV " line)]
+    [else
+     (string-append "NOP " line)]))
+
+(define (run-backend ir-lines out-file)
+  (define out (open-output-file out-file #:exists 'replace))
+  (for-each
+   (lambda (l)
+     (displayln (encode-line l) out))
+   ir-lines)
+  (close-output-port out))

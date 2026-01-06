@@ -1,0 +1,49 @@
+#lang racket
+(provide make-semantic-context
+         ctx-declare
+         ctx-check
+         ctx-new-temp
+         ctx-new-label
+         ctx-emit
+         ctx-code)
+
+;; context = (symbols temps labels code)
+
+(define (make-semantic-context)
+  (list '() 0 0 '()))
+
+(define (ctx-symbols ctx) (list-ref ctx 0))
+(define (ctx-temps ctx)   (list-ref ctx 1))
+(define (ctx-labels ctx)  (list-ref ctx 2))
+(define (ctx-code ctx)    (list-ref ctx 3))
+
+(define (ctx-set-symbols! ctx v) (set-car! ctx v))
+(define (ctx-set-temps! ctx v)   (set-car! (cdr ctx) v))
+(define (ctx-set-labels! ctx v)  (set-car! (cddr ctx) v))
+(define (ctx-set-code! ctx v)    (set-car! (cdddr ctx) v))
+
+;; declare variable
+(define (ctx-declare ctx name)
+  (ctx-set-symbols! ctx (cons name (ctx-symbols ctx))))
+
+;; check declared
+(define (ctx-check ctx name)
+  (if (member name (ctx-symbols ctx))
+      #t
+      (error "Semantic error: variable not declared")))
+
+;; new temp
+(define (ctx-new-temp ctx)
+  (let ((n (+ (ctx-temps ctx) 1)))
+    (ctx-set-temps! ctx n)
+    (string-append "t" (number->string n))))
+
+;; new label
+(define (ctx-new-label ctx)
+  (let ((n (+ (ctx-labels ctx) 1)))
+    (ctx-set-labels! ctx n)
+    (string-append "L" (number->string n))))
+
+;; emit IR
+(define (ctx-emit ctx line)
+  (ctx-set-code! ctx (append (ctx-code ctx) (list line))))
